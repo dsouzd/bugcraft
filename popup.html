@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { width: 300px; padding: 20px; }
+    button { width: 100%; padding: 10px; margin: 5px 0; border: none; border-radius: 5px; cursor: pointer; }
+    .start { background: #4CAF50; color: white; }
+    .stop { background: #f44336; color: white; }
+    .status { padding: 10px; text-align: center; font-weight: bold; }
+    .recording { color: #f44336; }
+  </style>
+</head>
+<body>
+  <div id="status" class="status">Ready to record</div>
+  <button id="recordBtn" class="start">Start Recording</button>
+  <button id="downloadBtn" style="display:none; background:#2196F3; color:white;">Download Report</button>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "BugCraft",
+  "version": "1.0",
+  "description": "Record screen, console logs, and network activity for debugging",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "debugger"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "BugCraft Recorder"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
