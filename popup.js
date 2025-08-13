@@ -2,13 +2,19 @@ let isRecording = false;
 
 document.addEventListener('DOMContentLoaded', function() {
   const recordBtn = document.getElementById('recordBtn');
-  const downloadBtn = document.getElementById('downloadBtn');
   const status = document.getElementById('status');
 
-  // Check current recording state
+  // Check current recording state and update UI immediately
   chrome.storage.local.get(['isRecording'], function(result) {
     if (result.isRecording) {
       updateUI(true);
+    }
+  });
+
+  // Listen for storage changes to update UI
+  chrome.storage.onChanged.addListener(function(changes, namespace) {
+    if (changes.isRecording) {
+      updateUI(changes.isRecording.newValue);
     }
   });
 
@@ -20,17 +26,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  downloadBtn.addEventListener('click', function() {
-    downloadReport();
-  });
-
   function startRecording() {
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-      chrome.tabs.sendMessage(tabs[0].id, {action: 'startRecording'}, function(response) {
-        if (response && response.success) {
-          updateUI(true);
-          chrome.storage.local.set({isRecording: true});
-        }
+      chrome.scripting.executeScript({
+        target: {tabId: tabs[0].id},
+        files: ['content.js']
+      }, () => {
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tabs[0].id, {action: 'startRecording'}, function(response) {
+            if (chrome.runtime.lastError) {
+              console.log('Error:', chrome.runtime.lastError.message);
+              return;
+            }
+            if (response && (response.success || response.started)) {
+              updateUI(true);
+              chrome.storage.local.set({isRecording: true});
+            }
+          });
+        }, 100);
       });
     });
   }
@@ -38,10 +51,13 @@ document.addEventListener('DOMContentLoaded', function() {
   function stopRecording() {
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
       chrome.tabs.sendMessage(tabs[0].id, {action: 'stopRecording'}, function(response) {
+        if (chrome.runtime.lastError) {
+          console.log('Error:', chrome.runtime.lastError.message);
+          return;
+        }
         if (response && response.success) {
           updateUI(false);
           chrome.storage.local.set({isRecording: false});
-          downloadBtn.style.display = 'block';
         }
       });
     });
@@ -57,22 +73,8 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       recordBtn.textContent = 'Start Recording';
       recordBtn.className = 'start';
-      status.textContent = 'Recording stopped';
+      status.textContent = 'Files downloaded!';
       status.className = 'status';
     }
-  }
-
-  function downloadReport() {
-    chrome.storage.local.get(['recordingData'], function(result) {
-      if (result.recordingData) {
-        const blob = new Blob([JSON.stringify(result.recordingData, null, 2)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `bugcraft-report-${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    });
   }
 });

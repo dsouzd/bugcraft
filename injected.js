@@ -1,8 +1,12 @@
-let isMonitoring = false;
-let originalConsole = {};
-let originalFetch = window.fetch;
-let originalXHROpen = XMLHttpRequest.prototype.open;
-let originalXHRSend = XMLHttpRequest.prototype.send;
+if (typeof window.bugcraftMonitoring === 'undefined') {
+  window.bugcraftMonitoring = {
+    isMonitoring: false,
+    originalConsole: {},
+    originalFetch: window.fetch,
+    originalXHROpen: XMLHttpRequest.prototype.open,
+    originalXHRSend: XMLHttpRequest.prototype.send
+  };
+}
 
 // Listen for monitoring commands
 window.addEventListener('message', function(event) {
@@ -16,12 +20,12 @@ window.addEventListener('message', function(event) {
 });
 
 function startMonitoring() {
-  if (isMonitoring) return;
-  isMonitoring = true;
+  if (window.bugcraftMonitoring.isMonitoring) return;
+  window.bugcraftMonitoring.isMonitoring = true;
   
   // Intercept console methods
   ['log', 'warn', 'error', 'info', 'debug'].forEach(method => {
-    originalConsole[method] = console[method];
+    window.bugcraftMonitoring.originalConsole[method] = console[method];
     console[method] = function(...args) {
       window.postMessage({
         type: 'CONSOLE_LOG',
@@ -29,7 +33,7 @@ function startMonitoring() {
         message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' '),
         args: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg))
       }, '*');
-      originalConsole[method].apply(console, args);
+      window.bugcraftMonitoring.originalConsole[method].apply(console, args);
     };
   });
 
@@ -38,7 +42,7 @@ function startMonitoring() {
     const url = args[0];
     const options = args[1] || {};
     
-    return originalFetch.apply(this, args)
+    return window.bugcraftMonitoring.originalFetch.apply(this, args)
       .then(response => {
         response.clone().text().then(text => {
           window.postMessage({
@@ -67,7 +71,7 @@ function startMonitoring() {
   XMLHttpRequest.prototype.open = function(method, url, ...args) {
     this._method = method;
     this._url = url;
-    return originalXHROpen.apply(this, [method, url, ...args]);
+    return window.bugcraftMonitoring.originalXHROpen.apply(this, [method, url, ...args]);
   };
 
   XMLHttpRequest.prototype.send = function(...args) {
@@ -89,21 +93,21 @@ function startMonitoring() {
       }
     };
     
-    return originalXHRSend.apply(this, args);
+    return window.bugcraftMonitoring.originalXHRSend.apply(this, args);
   };
 }
 
 function stopMonitoring() {
-  if (!isMonitoring) return;
-  isMonitoring = false;
+  if (!window.bugcraftMonitoring.isMonitoring) return;
+  window.bugcraftMonitoring.isMonitoring = false;
   
   // Restore console methods
-  Object.keys(originalConsole).forEach(method => {
-    console[method] = originalConsole[method];
+  Object.keys(window.bugcraftMonitoring.originalConsole).forEach(method => {
+    console[method] = window.bugcraftMonitoring.originalConsole[method];
   });
   
   // Restore fetch and XHR
-  window.fetch = originalFetch;
-  XMLHttpRequest.prototype.open = originalXHROpen;
-  XMLHttpRequest.prototype.send = originalXHRSend;
+  window.fetch = window.bugcraftMonitoring.originalFetch;
+  XMLHttpRequest.prototype.open = window.bugcraftMonitoring.originalXHROpen;
+  XMLHttpRequest.prototype.send = window.bugcraftMonitoring.originalXHRSend;
 }
